@@ -1,0 +1,45 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0] - 2024-01-01
+
+### Added
+
+- Initial release of @learningpad/api-client
+- React Query integration with custom hooks
+- TypeScript support with comprehensive type definitions
+- Service-oriented architecture for organizing APIs
+- Automatic token management and refresh
+- Error handling utilities and interceptors
+- Customizable notification system
+- Retry logic and caching configuration
+- Direct API methods for non-React usage
+- Comprehensive documentation and examples
+- Jest test suite with coverage reporting
+- ESLint configuration for code quality
+- Rollup build configuration for multiple formats
+
+### Features
+
+- `useApiQuery` hook for data fetching
+- `useApiMutation` hook for data mutations
+- Service-specific hook creators
+- Automatic request/response interceptors
+- Token refresh on 401 errors
+- Configurable retry logic
+- Query invalidation on mutations
+- Success/error message handling
+- Type-safe API calls
+- Universal compatibility (browser/Node.js)
+
+### Documentation
+
+- Complete README with examples
+- TypeScript type definitions
+- Real-world usage examples
+- API reference documentation
+- Contributing guidelines
