@@ -114,16 +114,22 @@ npm install @learningpad/api-client @tanstack/react-query axios
 
 ## Quick Start
 
+### Approach 1: Direct Hooks Usage
+
 ```tsx
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ApiConfig, useApiQuery } from "@learningpad/api-client";
+import {
+  ApiConfig,
+  useApiQuery,
+  useApiMutation,
+} from "@learningpad/api-client";
 
 // Initialize
 ApiConfig.initialize({
   services: {
-    api: {
-      name: "api",
-      baseURL: "https://api.example.com",
+    jsonplaceholder: {
+      name: "jsonplaceholder",
+      baseURL: "https://jsonplaceholder.typicode.com",
     },
   },
 });
@@ -138,21 +144,80 @@ function App() {
   );
 }
 
-// Use in components
-function UserList() {
-  const { data: users, isLoading } = useApiQuery({
-    serviceName: "api",
-    key: ["users"],
-    url: "/users",
+// Use hooks directly with serviceName
+function PostsList() {
+  // Direct usage
+  const { data: posts } = useApiQuery({
+    serviceName: "jsonplaceholder",
+    key: ["posts"],
+    url: "/posts",
   });
 
-  if (isLoading) return <div>Loading...</div>;
+  const createPost = useApiMutation({
+    serviceName: "jsonplaceholder",
+    url: "/posts",
+    method: "post",
+  });
+
   return (
-    <ul>
-      {users?.map((user) => (
-        <li>{user.name}</li>
+    <div>
+      {posts?.map((post) => (
+        <div key={post.id}>{post.title}</div>
       ))}
-    </ul>
+    </div>
+  );
+}
+```
+
+### Approach 2: Pre-configured Clients
+
+```tsx
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ApiConfig, createServiceClient } from "@learningpad/api-client";
+
+// Initialize
+ApiConfig.initialize({
+  services: {
+    jsonplaceholder: {
+      name: "jsonplaceholder",
+      baseURL: "https://jsonplaceholder.typicode.com",
+    },
+  },
+});
+
+// Create pre-configured clients
+const jsonApiClient = createServiceClient("jsonplaceholder");
+const authApiClient = createServiceClient("auth");
+
+const queryClient = new QueryClient();
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <YourApp />
+    </QueryClientProvider>
+  );
+}
+
+// Use pre-configured clients
+function PostsList() {
+  // Pre-configured clients
+  const { data: omrData } = jsonApiClient.useQuery({
+    key: ["posts"],
+    url: "/posts",
+  });
+
+  const login = authApiClient.useMutation({
+    url: "/login",
+    method: "post",
+  });
+
+  return (
+    <div>
+      {omrData?.map((post) => (
+        <div key={post.id}>{post.title}</div>
+      ))}
+    </div>
   );
 }
 ```
@@ -317,30 +382,37 @@ onTokenRefreshError: (error) => console.error('Refresh failed', error),
 
 ## Examples Provided
 
-1. **Basic Usage** (`examples/basic-usage.tsx`)
+1. **Simple Approach 1** (`demo/simple-approach1.tsx`)
+
+   - Direct hooks usage with `serviceName`
+   - JSONPlaceholder API demo
+   - Clean, minimal implementation
+
+2. **Simple Approach 2** (`demo/simple-approach2.tsx`)
+
+   - Pre-configured client usage
+   - JSONPlaceholder API demo
+   - Clean, minimal implementation
+
+3. **Basic Usage** (`examples/basic-usage.tsx`)
 
    - Simple data fetching
    - Basic mutations
    - Query client setup
 
-2. **Advanced Usage** (`examples/advanced-usage.tsx`)
+4. **Advanced Usage** (`examples/advanced-usage.tsx`)
 
    - Custom token management
    - Multiple services
    - Search and pagination
    - Error handling
 
-3. **Real-World Example** (`examples/real-world-example.tsx`)
-
+5. **Real-World Example** (`examples/real-world-example.tsx`)
    - Complete e-commerce application
    - Product catalog
    - Shopping cart
    - Order management
    - Payment processing
-
-4. **Simple Demo** (`demo/simple-demo.tsx`)
-   - JSONPlaceholder API demo
-   - Quick start reference
 
 ## Support & Resources
 

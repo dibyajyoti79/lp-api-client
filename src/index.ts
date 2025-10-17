@@ -1,22 +1,15 @@
-// Main exports
-export { ApiClient, createApiClient, createServiceClient } from "./ApiClient";
+// Core API Client
+export { createServiceClient } from "./ApiClient";
 export { ApiConfig } from "./config";
-export { ApiService } from "./services/ApiService";
 
-// Hooks
-export {
-  createUseQuery,
-  createUseMutation,
-  useApiQuery,
-  useApiMutation,
-} from "./hooks";
+// Hooks for both approaches
+export { useApiQuery, useApiMutation } from "./hooks";
 
 // Types
 export type {
   ApiError,
   UseQueryApiProps,
   UseMutationApiProps,
-  ApiClientConfig,
   TokenManager,
   NotificationManager,
   ApiServiceConfig,
@@ -24,21 +17,4 @@ export type {
 } from "./types";
 
 // Utilities
-export {
-  isAxiosError,
-  getErrorMessage,
-  getErrorStatus,
-  isNetworkError,
-  isTimeoutError,
-  buildUrl,
-  createQueryKey,
-  createRetryConfig,
-  createCacheConfig,
-  createRequestInterceptor,
-  createResponseInterceptor,
-  createErrorInterceptor,
-} from "./utils";
-
-// Default export
-import { ApiClient } from "./ApiClient";
-export default ApiClient;
+export { isAxiosError, getErrorMessage, getErrorStatus } from "./utils";
