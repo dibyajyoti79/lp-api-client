@@ -10,16 +10,6 @@ export class ApiService {
 
   constructor(serviceName: string) {
     this.serviceName = serviceName;
-
-    // Check if ApiConfig is initialized
-    if (!ApiConfig.isInitialized()) {
-      throw new Error(
-        `ApiConfig must be initialized before creating ApiService for '${serviceName}'. ` +
-          `Please call ApiConfig.initialize(options) in your app setup. ` +
-          `Make sure to import your config file before using any hooks.`
-      );
-    }
-
     this.config = ApiConfig.getInstance();
     this.axiosInstance = this.config.createAxiosInstance(serviceName);
   }

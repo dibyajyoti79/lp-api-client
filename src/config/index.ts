@@ -6,8 +6,30 @@ import axios, {
 } from "axios";
 import { ApiClientConfig, TokenManager, ApiClientOptions } from "../types";
 
-// Global instance storage to ensure singleton across module boundaries
-let globalApiConfigInstance: ApiConfig | null = null;
+// Use global object to ensure true singleton across all module boundaries
+// This works even when bundlers create separate module instances
+const getGlobalApiConfig = () => {
+  if (typeof globalThis !== "undefined") {
+    return (globalThis as any).__learningpadApiConfig;
+  }
+  if (typeof global !== "undefined") {
+    return (global as any).__learningpadApiConfig;
+  }
+  if (typeof window !== "undefined") {
+    return (window as any).__learningpadApiConfig;
+  }
+  return null;
+};
+
+const setGlobalApiConfig = (instance: ApiConfig | null) => {
+  if (typeof globalThis !== "undefined") {
+    (globalThis as any).__learningpadApiConfig = instance;
+  } else if (typeof global !== "undefined") {
+    (global as any).__learningpadApiConfig = instance;
+  } else if (typeof window !== "undefined") {
+    (window as any).__learningpadApiConfig = instance;
+  }
+};
 
 export class ApiConfig {
   private options: ApiClientOptions;
@@ -23,35 +45,58 @@ export class ApiConfig {
   }
 
   public static getInstance(options?: ApiClientOptions): ApiConfig {
-    if (!globalApiConfigInstance) {
+    const instance = getGlobalApiConfig();
+    if (!instance) {
       if (options) {
-        globalApiConfigInstance = new ApiConfig(options);
+        const newInstance = new ApiConfig(options);
+        setGlobalApiConfig(newInstance);
+        return newInstance;
       } else {
-        throw new Error("ApiConfig must be initialized with options first");
+        // Auto-initialize with default configuration if none provided
+        console.warn(
+          "ApiConfig not initialized. Auto-initializing with default configuration. " +
+            "Please call ApiConfig.initialize(options) in your app setup for better control."
+        );
+        const defaultOptions: ApiClientOptions = {
+          services: {
+            default: {
+              name: "default",
+              baseURL: "https://jsonplaceholder.typicode.com",
+              timeout: 10000,
+            },
+          },
+          defaultTimeout: 10000,
+          defaultHeaders: {
+            "Content-Type": "application/json",
+          },
+        };
+        const newInstance = new ApiConfig(defaultOptions);
+        setGlobalApiConfig(newInstance);
+        return newInstance;
       }
     }
-    return globalApiConfigInstance;
+    return instance;
   }
 
   public static initialize(options: ApiClientOptions): void {
-    globalApiConfigInstance = new ApiConfig(options);
+    const instance = new ApiConfig(options);
+    setGlobalApiConfig(instance);
   }
 
   public static isInitialized(): boolean {
-    return globalApiConfigInstance !== null;
+    return getGlobalApiConfig() !== null;
   }
 
   public static reset(): void {
-    globalApiConfigInstance = null;
+    setGlobalApiConfig(null);
   }
 
   // Utility method for debugging
   public static getDebugInfo(): { initialized: boolean; services: string[] } {
+    const instance = getGlobalApiConfig();
     return {
-      initialized: globalApiConfigInstance !== null,
-      services: globalApiConfigInstance
-        ? Object.keys(globalApiConfigInstance.options.services)
-        : [],
+      initialized: instance !== null,
+      services: instance ? Object.keys(instance.options.services) : [],
     };
   }
 
