@@ -21,11 +21,12 @@ export class ApiConfig {
   }
 
   public static getInstance(options?: ApiClientOptions): ApiConfig {
-    if (!ApiConfig.instance && options) {
-      ApiConfig.instance = new ApiConfig(options);
-    }
     if (!ApiConfig.instance) {
-      throw new Error("ApiConfig must be initialized with options first");
+      if (options) {
+        ApiConfig.instance = new ApiConfig(options);
+      } else {
+        throw new Error("ApiConfig must be initialized with options first");
+      }
     }
     return ApiConfig.instance;
   }
