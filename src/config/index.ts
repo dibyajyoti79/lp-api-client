@@ -6,8 +6,10 @@ import axios, {
 } from "axios";
 import { ApiClientConfig, TokenManager, ApiClientOptions } from "../types";
 
+// Global instance storage to ensure singleton across module boundaries
+let globalApiConfigInstance: ApiConfig | null = null;
+
 export class ApiConfig {
-  private static instance: ApiConfig;
   private options: ApiClientOptions;
   private tokenManager: TokenManager;
   private notificationManager?: any;
@@ -21,18 +23,36 @@ export class ApiConfig {
   }
 
   public static getInstance(options?: ApiClientOptions): ApiConfig {
-    if (!ApiConfig.instance) {
+    if (!globalApiConfigInstance) {
       if (options) {
-        ApiConfig.instance = new ApiConfig(options);
+        globalApiConfigInstance = new ApiConfig(options);
       } else {
         throw new Error("ApiConfig must be initialized with options first");
       }
     }
-    return ApiConfig.instance;
+    return globalApiConfigInstance;
   }
 
   public static initialize(options: ApiClientOptions): void {
-    ApiConfig.instance = new ApiConfig(options);
+    globalApiConfigInstance = new ApiConfig(options);
+  }
+
+  public static isInitialized(): boolean {
+    return globalApiConfigInstance !== null;
+  }
+
+  public static reset(): void {
+    globalApiConfigInstance = null;
+  }
+
+  // Utility method for debugging
+  public static getDebugInfo(): { initialized: boolean; services: string[] } {
+    return {
+      initialized: globalApiConfigInstance !== null,
+      services: globalApiConfigInstance
+        ? Object.keys(globalApiConfigInstance.options.services)
+        : [],
+    };
   }
 
   private createDefaultTokenManager(): TokenManager {
