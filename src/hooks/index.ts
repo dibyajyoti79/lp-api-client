@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError, AxiosRequestConfig } from "axios";
 import { UseQueryApiProps, UseMutationApiProps, ApiError } from "../types";
 import { ApiConfig } from "../config";
+import { ApiService } from "../services/ApiService";
 
 // Hook for creating query hooks with a specific service
 export const createUseQuery = (serviceName: string) => {
@@ -15,8 +16,6 @@ export const createUseQuery = (serviceName: string) => {
     data,
     options = {},
   }: UseQueryApiProps<TData>) => {
-    // Import ApiService dynamically to avoid circular dependencies
-    const { ApiService } = require("../services/ApiService");
     const apiService = new ApiService(serviceName);
     return apiService.useQuery({
       key,
@@ -42,7 +41,6 @@ export const createUseMutation = (serviceName: string) => {
     successMessage,
     errorMessage,
   }: UseMutationApiProps<TData, TParams>) => {
-    const { ApiService } = require("../services/ApiService");
     const apiService = new ApiService(serviceName);
     return apiService.useMutation({
       keyToInvalidate,
@@ -68,7 +66,6 @@ export const useApiQuery = <TData>({
   data,
   options = {},
 }: UseQueryApiProps<TData> & { serviceName: string }) => {
-  const { ApiService } = require("../services/ApiService");
   const apiService = new ApiService(serviceName);
   return apiService.useQuery({
     key,
@@ -93,7 +90,6 @@ export const useApiMutation = <TData, TParams = unknown>({
   successMessage,
   errorMessage,
 }: UseMutationApiProps<TData, TParams> & { serviceName: string }) => {
-  const { ApiService } = require("../services/ApiService");
   const apiService = new ApiService(serviceName);
   return apiService.useMutation({
     keyToInvalidate,
