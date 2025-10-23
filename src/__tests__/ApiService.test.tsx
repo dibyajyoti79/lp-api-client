@@ -17,10 +17,8 @@ jest.mock("../config", () => ({
         error: jest.fn(),
       })),
     })),
-    isInitialized: jest.fn(() => true),
     initialize: jest.fn(),
     reset: jest.fn(),
-    getDebugInfo: jest.fn(() => ({ initialized: true, services: ["test"] })),
   },
 }));
 

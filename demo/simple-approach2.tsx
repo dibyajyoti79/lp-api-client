@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ApiConfig, createServiceClient } from "@learningpad/api-client";
+import { ApiConfig, ApiService } from "@learningpad/api-client";
 
 // Step 1: Initialize API Configuration
 ApiConfig.initialize({
@@ -9,40 +9,46 @@ ApiConfig.initialize({
       name: "jsonplaceholder",
       baseURL: "https://jsonplaceholder.typicode.com",
     },
+    auth: {
+      name: "auth",
+      baseURL: "https://auth.example.com",
+    },
   },
 });
 
-// Step 2: Create a client for this service
-const jsonPlaceholderClient = createServiceClient("jsonplaceholder");
+// Step 2: Create pre-configured service clients
+const jsonApiService = new ApiService("jsonplaceholder");
+const authApiService = new ApiService("auth");
 
-// Step 3: Use the client directly (no serviceName needed)
+// Step 3: Use the service clients directly
 function SimpleExample() {
-  // Fetch data
-  const { data: posts, isLoading } = jsonPlaceholderClient.useQuery({
+  // Fetch data from JSONPlaceholder
+  const { data: posts, isLoading } = jsonApiService.useQuery({
     key: ["posts"],
     url: "/posts",
   });
 
-  // Create data
-  const createPost = jsonPlaceholderClient.useMutation({
-    url: "/posts",
+  // Create data with auth service
+  const login = authApiService.useMutation({
+    url: "/login",
     method: "post",
+    successMessage: "Login successful!",
+    errorMessage: "Login failed",
   });
 
-  const handleCreate = () => {
-    createPost.mutate({
-      title: "New Post",
-      body: "This is a new post",
-      userId: 1,
+  const handleLogin = () => {
+    login.mutate({
+      email: "user@example.com",
+      password: "password",
     });
   };
 
   return (
     <div style={{ padding: "20px" }}>
-      <h1>Simple Example - Pre-configured Client</h1>
+      <h1>Simple Example - Multiple Services</h1>
 
-      <button onClick={handleCreate} disabled={createPost.isPending}>
-        {createPost.isPending ? "Creating..." : "Create Post"}
+      <button onClick={handleLogin} disabled={login.isPending}>
+        {login.isPending ? "Logging in..." : "Login"}
       </button>
 
       {isLoading ? (

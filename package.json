@@ -1,6 +1,6 @@
 {
   "name": "@learningpad/api-client",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "A powerful, type-safe API client built on top of React Query and Axios with automatic token management and error handling",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",

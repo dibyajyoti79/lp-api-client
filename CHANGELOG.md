@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2024-01-15
+
+### Major Changes
+
+- **Simplified Architecture**: Removed complex singleton patterns and unnecessary hooks
+- **Direct ApiService Usage**: Users can now directly use `new ApiService(serviceName)` instead of `createServiceClient()`
+- **Cleaner API**: Removed `useApiQuery` and `useApiMutation` hooks in favor of service-specific clients
+- **Reduced Bundle Size**: Removed unused code and dependencies
+
+### Removed
+
+- `createServiceClient` function (use `new ApiService()` directly)
+- `useApiQuery` and `useApiMutation` hooks
+- Complex singleton pattern with global variables
+- `UseQueryApiProps` and `UseMutationApiProps` types
+- Unnecessary ApiClient class methods
+
+### Simplified Usage
+
+```typescript
+// Initialize once
+ApiConfig.initialize(config);
+
+// Create service client directly
+const postsService = new ApiService("posts");
+
+// Use React Query hooks directly
+const { data } = postsService.useQuery({...});
+const mutation = postsService.useMutation({...});
+```
+
 ## [1.0.5] - 2024-01-15
 
 ### Fixed

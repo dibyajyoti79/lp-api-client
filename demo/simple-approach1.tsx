@@ -1,10 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  ApiConfig,
-  useApiQuery,
-  useApiMutation,
-} from "@learningpad/api-client";
+import { ApiConfig, ApiService } from "@learningpad/api-client";
 
 // Step 1: Initialize API Configuration
 ApiConfig.initialize({
@@ -16,20 +12,24 @@ ApiConfig.initialize({
   },
 });
 
-// Step 2: Use hooks directly with serviceName
+// Step 2: Create service client
+const apiService = new ApiService("jsonplaceholder");
+
+// Step 3: Use React Query hooks directly
 function SimpleExample() {
   // Fetch data
-  const { data: posts, isLoading } = useApiQuery({
-    serviceName: "jsonplaceholder", // ← This tells which service to use
+  const { data: posts, isLoading } = apiService.useQuery({
     key: ["posts"],
     url: "/posts",
   });
 
   // Create data
-  const createPost = useApiMutation({
-    serviceName: "jsonplaceholder", // ← Same service name
+  const createPost = apiService.useMutation({
+    keyToInvalidate: { queryKey: ["posts"] },
     url: "/posts",
     method: "post",
+    successMessage: "Post created successfully!",
+    errorMessage: "Failed to create post",
   });
 
   const handleCreate = () => {
@@ -42,7 +42,7 @@ function SimpleExample() {
 
   return (
     <div style={{ padding: "20px" }}>
-      <h1>Simple Example - Direct Hooks</h1>
+      <h1>Simple Example - Service Client</h1>
 
       <button onClick={handleCreate} disabled={createPost.isPending}>
         {createPost.isPending ? "Creating..." : "Create Post"}

@@ -1,36 +1,7 @@
-import { AxiosError, AxiosRequestConfig } from "axios";
-import {
-  InvalidateQueryFilters,
-  UseMutationOptions,
-  UseQueryOptions,
-} from "@tanstack/react-query";
+import { AxiosRequestConfig } from "axios";
 
 export interface ApiError {
   detail: string | { message: string };
-}
-
-export interface UseQueryApiProps<TData> {
-  key: unknown[];
-  url: string;
-  enabled?: boolean;
-  method?: "get" | "post";
-  config?: AxiosRequestConfig;
-  params?: Record<string, unknown>;
-  data?: Record<string, unknown>;
-  options?: Omit<UseQueryOptions<TData, AxiosError>, "queryKey" | "queryFn">;
-}
-
-export interface UseMutationApiProps<TData, TParams> {
-  keyToInvalidate?: InvalidateQueryFilters<readonly unknown[]>;
-  url: string;
-  method?: "post" | "put" | "patch" | "delete";
-  config?: AxiosRequestConfig;
-  options?: Omit<
-    UseMutationOptions<TData, AxiosError<ApiError>, TParams>,
-    "mutationFn"
-  >;
-  successMessage?: string;
-  errorMessage?: string;
 }
 
 export interface ApiClientConfig {

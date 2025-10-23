@@ -1,8 +1,8 @@
 # 🚀 Copy & Paste Example
 
-Here are two simple approaches you can copy and paste:
+Here's the simple service client approach you can copy and paste:
 
-## Approach 1: Direct Hooks Usage
+## Service Client Approach
 
 ### 1. Install Dependencies
 
@@ -13,13 +13,9 @@ npm install @learningpad/api-client @tanstack/react-query
 ### 2. Create `src/App.tsx`
 
 ```typescript
-import React, { useState } from "react";
+import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  ApiConfig,
-  useApiQuery,
-  useApiMutation,
-} from "@learningpad/api-client";
+import { ApiConfig, ApiService } from "@learningpad/api-client";
 
 // Step 1: Initialize API Configuration
 ApiConfig.initialize({
@@ -31,20 +27,24 @@ ApiConfig.initialize({
   },
 });
 
-// Step 2: Use hooks directly with serviceName
+// Step 2: Create service client
+const apiService = new ApiService("jsonplaceholder");
+
+// Step 3: Use React Query hooks directly
 function SimpleExample() {
   // Fetch data
-  const { data: posts, isLoading } = useApiQuery({
-    serviceName: "jsonplaceholder", // ← This tells which service to use
+  const { data: posts, isLoading } = apiService.useQuery({
     key: ["posts"],
     url: "/posts",
   });
 
   // Create data
-  const createPost = useApiMutation({
-    serviceName: "jsonplaceholder", // ← Same service name
+  const createPost = apiService.useMutation({
+    keyToInvalidate: { queryKey: ["posts"] },
     url: "/posts",
     method: "post",
+    successMessage: "Post created successfully!",
+    errorMessage: "Failed to create post",
   });
 
   const handleCreate = () => {
@@ -55,40 +55,26 @@ function SimpleExample() {
     });
   };
 
+  if (isLoading) return <div>Loading...</div>;
+
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Simple Example - Direct Hooks</h1>
-
-      <button onClick={handleCreate} disabled={createPost.isPending}>
-        {createPost.isPending ? "Creating..." : "Create Post"}
-      </button>
-
-      {isLoading ? (
-        <div>Loading...</div>
-      ) : (
-        <div>
-          <h2>Posts ({posts?.length || 0})</h2>
-          {posts?.slice(0, 5).map((post: any) => (
-            <div
-              key={post.id}
-              style={{
-                border: "1px solid #ccc",
-                padding: "10px",
-                margin: "5px",
-              }}
-            >
-              <h3>{post.title}</h3>
-              <p>{post.body}</p>
-            </div>
-          ))}
+    <div>
+      <h1>Posts</h1>
+      <button onClick={handleCreate}>Create Post</button>
+      {posts?.map((post: any) => (
+        <div key={post.id}>
+          <h3>{post.title}</h3>
+          <p>{post.body}</p>
         </div>
-      )}
+      ))}
     </div>
   );
 }
 
+// Step 4: Wrap with QueryClient
+const queryClient = new QueryClient();
+
 function App() {
-  const queryClient = new QueryClient();
   return (
     <QueryClientProvider client={queryClient}>
       <SimpleExample />
@@ -99,154 +85,23 @@ function App() {
 export default App;
 ```
 
-## Approach 2: Pre-configured Clients
-
-### 1. Install Dependencies
+### 3. Run Your App
 
 ```bash
-npm install @learningpad/api-client @tanstack/react-query
+npm start
 ```
 
-### 2. Create `src/api-clients.ts`
+## Key Benefits
 
-```typescript
-import { createServiceClient } from "@learningpad/api-client";
+✅ **Simple**: Just initialize once, create service client, use React Query hooks  
+✅ **Type Safe**: Full TypeScript support  
+✅ **Automatic**: Token management, error handling, retries  
+✅ **Flexible**: Works with any API structure
 
-// Create pre-configured clients
-export const jsonApiClient = createServiceClient("jsonplaceholder");
-export const authApiClient = createServiceClient("auth");
-export const omrApiClient = createServiceClient("omr");
-```
+## What You Get
 
-### 3. Create `src/App.tsx`
-
-```typescript
-import React, { useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ApiConfig } from "@learningpad/api-client";
-import { jsonApiClient, authApiClient } from "./api-clients";
-
-// Step 1: Initialize API Configuration
-ApiConfig.initialize({
-  services: {
-    jsonplaceholder: {
-      name: "jsonplaceholder",
-      baseURL: "https://jsonplaceholder.typicode.com",
-    },
-    auth: {
-      name: "auth",
-      baseURL: "https://auth.example.com",
-    },
-  },
-});
-
-// Step 2: Use pre-configured clients
-function SimpleExample() {
-  // Fetch data
-  const { data: omrData, isLoading } = jsonApiClient.useQuery({
-    key: ["posts"],
-    url: "/posts",
-  });
-
-  // Create data
-  const login = authApiClient.useMutation({
-    url: "/login",
-    method: "post",
-  });
-
-  const handleLogin = () => {
-    login.mutate({
-      email: "user@example.com",
-      password: "password",
-    });
-  };
-
-  return (
-    <div style={{ padding: "20px" }}>
-      <h1>Simple Example - Pre-configured Clients</h1>
-
-      <button onClick={handleLogin} disabled={login.isPending}>
-        {login.isPending ? "Logging in..." : "Login"}
-      </button>
-
-      {isLoading ? (
-        <div>Loading...</div>
-      ) : (
-        <div>
-          <h2>Posts ({omrData?.length || 0})</h2>
-          {omrData?.slice(0, 5).map((post: any) => (
-            <div
-              key={post.id}
-              style={{
-                border: "1px solid #ccc",
-                padding: "10px",
-                margin: "5px",
-              }}
-            >
-              <h3>{post.title}</h3>
-              <p>{post.body}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function App() {
-  const queryClient = new QueryClient();
-  return (
-    <QueryClientProvider client={queryClient}>
-      <SimpleExample />
-    </QueryClientProvider>
-  );
-}
-
-export default App;
-```
-
-## 🎯 Key Differences
-
-### Approach 1: Direct Hooks
-
-```typescript
-// Direct usage
-const { data: posts } = useApiQuery({
-  serviceName: "jsonplaceholder",
-  key: ["posts"],
-  url: "/posts",
-});
-
-const createPost = useApiMutation({
-  serviceName: "jsonplaceholder",
-  url: "/posts",
-  method: "post",
-});
-```
-
-### Approach 2: Pre-configured Clients
-
-```typescript
-// Pre-configured clients
-const { data: omrData } = jsonApiClient.useQuery({
-  key: ["posts"],
-  url: "/posts",
-});
-
-const login = authApiClient.useMutation({
-  url: "/login",
-  method: "post",
-});
-```
-
-## 🎉 That's It!
-
-Both approaches give you:
-
-- ✅ Data fetching with loading states
-- ✅ Create/update/delete operations
-- ✅ Error handling
-- ✅ Automatic caching
-- ✅ TypeScript support
-
-Choose the approach that fits your project structure better!
+- 🔄 **Automatic Retry**: Failed requests retry automatically
+- 🔐 **Token Management**: Automatic token refresh on 401 errors
+- 📱 **Universal**: Works in browser and Node.js
+- 🎯 **Service-Oriented**: Organize APIs by service
+- ⚡ **React Query**: Powerful caching and synchronization

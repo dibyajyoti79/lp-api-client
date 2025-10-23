@@ -1,7 +1,37 @@
 import { AxiosError, AxiosRequestConfig } from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiConfig } from "../config";
-import { UseQueryApiProps, UseMutationApiProps, ApiError } from "../types";
+import { ApiError } from "../types";
+import {
+  InvalidateQueryFilters,
+  UseMutationOptions,
+  UseQueryOptions,
+} from "@tanstack/react-query";
+
+// Local types for hooks
+interface UseQueryApiProps<TData> {
+  key: unknown[];
+  url: string;
+  enabled?: boolean;
+  method?: "get" | "post";
+  config?: AxiosRequestConfig;
+  params?: Record<string, unknown>;
+  data?: Record<string, unknown>;
+  options?: Omit<UseQueryOptions<TData, AxiosError>, "queryKey" | "queryFn">;
+}
+
+interface UseMutationApiProps<TData, TParams> {
+  keyToInvalidate?: InvalidateQueryFilters<readonly unknown[]>;
+  url: string;
+  method?: "post" | "put" | "patch" | "delete";
+  config?: AxiosRequestConfig;
+  options?: Omit<
+    UseMutationOptions<TData, AxiosError<ApiError>, TParams>,
+    "mutationFn"
+  >;
+  successMessage?: string;
+  errorMessage?: string;
+}
 
 export class ApiService {
   private serviceName: string;

@@ -27,18 +27,28 @@ pnpm add @learningpad/api-client @tanstack/react-query
 ## ⚡ Quick Start
 
 ```typescript
-import { useApiQuery, useApiMutation } from "@learningpad/api-client";
+import { ApiConfig, ApiService } from "@learningpad/api-client";
 
-// Fetch data
-const { data, isLoading, error } = useApiQuery<User[]>({
-  serviceName: "api",
+// 1. Initialize configuration
+ApiConfig.initialize({
+  services: {
+    api: {
+      name: "api",
+      baseURL: "https://api.example.com",
+    },
+  },
+});
+
+// 2. Create service client
+const apiService = new ApiService("api");
+
+// 3. Use React Query hooks
+const { data, isLoading, error } = apiService.useQuery({
   key: ["users"],
   url: "/users",
 });
 
-// Create data
-const createUser = useApiMutation<User, CreateUserRequest>({
-  serviceName: "api",
+const createUser = apiService.useMutation({
   keyToInvalidate: { queryKey: ["users"] },
   url: "/users",
   method: "post",
@@ -61,12 +71,14 @@ const createUser = useApiMutation<User, CreateUserRequest>({
 - **Token management** - Automatic token refresh
 - **Notifications** - Success/error messages
 
-### Available Hooks
+### Available Methods
 
-| Hook             | Purpose              | Returns                               |
-| ---------------- | -------------------- | ------------------------------------- |
-| `useApiQuery`    | Fetch data           | `{ data, isLoading, error, refetch }` |
-| `useApiMutation` | Create/Update/Delete | `{ mutate, isPending, error, reset }` |
+| Method                     | Purpose                  | Usage                           |
+| -------------------------- | ------------------------ | ------------------------------- |
+| `ApiConfig.initialize()`   | Initialize global config | `ApiConfig.initialize(options)` |
+| `new ApiService()`         | Create service client    | `new ApiService("serviceName")` |
+| `apiService.useQuery()`    | Fetch data               | `apiService.useQuery({...})`    |
+| `apiService.useMutation()` | Create/Update/Delete     | `apiService.useMutation({...})` |
 
 ## 🚀 Next Steps
 
