@@ -1,4 +1,5 @@
-import { AxiosError, AxiosRequestConfig } from "axios";
+import { AxiosError } from "axios";
+import { AxiosRequestConfig } from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiConfig } from "../config";
 import { ApiError } from "../types";
@@ -14,7 +15,7 @@ interface UseQueryApiProps<TData> {
   url: string;
   enabled?: boolean;
   method?: "get" | "post";
-  config?: AxiosRequestConfig;
+  config?: Omit<AxiosRequestConfig, "url" | "method">;
   params?: Record<string, unknown>;
   data?: Record<string, unknown>;
   options?: Omit<UseQueryOptions<TData, AxiosError>, "queryKey" | "queryFn">;
@@ -24,24 +25,20 @@ interface UseMutationApiProps<TData, TParams> {
   keyToInvalidate?: InvalidateQueryFilters<readonly unknown[]>;
   url: string;
   method?: "post" | "put" | "patch" | "delete";
-  config?: AxiosRequestConfig;
+  config?: Omit<AxiosRequestConfig, "url" | "method">;
+  showNotification?: boolean; // Default true
   options?: Omit<
     UseMutationOptions<TData, AxiosError<ApiError>, TParams>,
     "mutationFn"
   >;
-  successMessage?: string;
-  errorMessage?: string;
 }
 
 export class ApiService {
-  private serviceName: string;
   private axiosInstance: any;
-  private config: ApiConfig;
 
   constructor(serviceName: string) {
-    this.serviceName = serviceName;
-    this.config = ApiConfig.getInstance();
-    this.axiosInstance = this.config.createAxiosInstance(serviceName);
+    const config = ApiConfig.getInstance();
+    this.axiosInstance = config.createAxiosInstance(serviceName);
   }
 
   public useQuery<TData>({
@@ -66,7 +63,7 @@ export class ApiService {
     };
 
     const queryResult = useQuery<TData, AxiosError>({
-      queryKey: [...key, params, data],
+      queryKey: [...key],
       queryFn: fetchData,
       enabled,
       staleTime: options.staleTime ?? 1000 * 60 * 5, // 5 minutes default
@@ -81,12 +78,12 @@ export class ApiService {
     url,
     method = "post",
     config: requestConfig,
+    showNotification = true,
     options,
-    successMessage,
-    errorMessage,
   }: UseMutationApiProps<TData, TParams>) {
     const queryClient = useQueryClient();
-    const notificationManager = this.config.getNotificationManager();
+    const config = ApiConfig.getInstance();
+    const notificationManager = config.getNotificationManager();
 
     const mutateData = async (params: TParams): Promise<TData> => {
       const res = await this.axiosInstance({
@@ -94,95 +91,46 @@ export class ApiService {
         method,
         data: params,
         ...requestConfig,
-        headers: {
-          ...requestConfig?.headers,
-        },
       });
+
       return res.data;
     };
 
+    // Get user's callbacks before overriding
+    const userOnSuccess = options?.onSuccess;
+    const userOnError = options?.onError;
+
     return useMutation<TData, AxiosError<ApiError>, TParams>({
-      ...options,
       mutationKey: [url, method],
       mutationFn: mutateData,
-      onSuccess: (
-        data: any,
-        variables: any,
-        onMutateResult: any,
-        context: any
-      ) => {
-        if (successMessage && notificationManager) {
-          notificationManager.success(successMessage);
+      ...options,
+      onSuccess: (data, variables, context, mutation) => {
+        // Show notification if response has message field
+        if (showNotification && notificationManager && (data as any)?.message) {
+          notificationManager.success((data as any).message);
         }
+
+        // Invalidate queries if needed
         if (keyToInvalidate) {
           queryClient.invalidateQueries(keyToInvalidate);
         }
-        options?.onSuccess?.(data, variables, onMutateResult, context);
+
+        // Call user's callback
+        userOnSuccess?.(data, variables, context, mutation);
       },
-      onError: (
-        error: any,
-        variables: any,
-        onMutateResult: any,
-        context: any
-      ) => {
-        if (errorMessage && notificationManager) {
+      onError: (error, variables, context, mutation) => {
+        // Show error notification
+        if (showNotification && notificationManager) {
+          const errorMessage =
+            error.response?.data?.message ||
+            error.message ||
+            "An error occurred";
           notificationManager.error(errorMessage);
         }
-        options?.onError?.(error, variables, onMutateResult, context);
-      },
-      onSettled: (
-        data: any,
-        error: any,
-        variables: any,
-        onMutateResult: any,
-        context: any
-      ) => {
-        options?.onSettled?.(data, error, variables, onMutateResult, context);
+
+        // Call user's callback
+        userOnError?.(error, variables, context, mutation);
       },
     });
-  }
-
-  // Direct API methods for non-React usage
-  public async get<TData>(
-    url: string,
-    config?: AxiosRequestConfig
-  ): Promise<TData> {
-    const response = await this.axiosInstance.get(url, config);
-    return response.data;
-  }
-
-  public async post<TData, TParams = unknown>(
-    url: string,
-    data?: TParams,
-    config?: AxiosRequestConfig
-  ): Promise<TData> {
-    const response = await this.axiosInstance.post(url, data, config);
-    return response.data;
-  }
-
-  public async put<TData, TParams = unknown>(
-    url: string,
-    data?: TParams,
-    config?: AxiosRequestConfig
-  ): Promise<TData> {
-    const response = await this.axiosInstance.put(url, data, config);
-    return response.data;
-  }
-
-  public async patch<TData, TParams = unknown>(
-    url: string,
-    data?: TParams,
-    config?: AxiosRequestConfig
-  ): Promise<TData> {
-    const response = await this.axiosInstance.patch(url, data, config);
-    return response.data;
-  }
-
-  public async delete<TData>(
-    url: string,
-    config?: AxiosRequestConfig
-  ): Promise<TData> {
-    const response = await this.axiosInstance.delete(url, config);
-    return response.data;
   }
 }

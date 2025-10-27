@@ -1,58 +1,34 @@
-import { AxiosRequestConfig } from "axios";
+import { AxiosRequestConfig, CreateAxiosDefaults } from "axios";
 
 export interface ApiError {
   detail: string | { message: string };
-}
-
-export interface ApiClientConfig {
-  baseURL: string;
-  timeout?: number;
-  headers?: Record<string, string>;
-  withCredentials?: boolean;
+  message?: string;
 }
 
 export interface TokenManager {
   getAccessToken: () => string | null;
-  getRefreshToken: () => string | null;
   setAccessToken: (token: string) => void;
-  setRefreshToken: (token: string) => void;
   clearTokens: () => void;
+  // Optional refresh token methods
+  getRefreshToken?: () => string | null;
+  setRefreshToken?: (token: string) => void;
 }
 
 export interface NotificationManager {
   success: (message: string) => void;
   error: (message: string) => void;
-  info: (message: string) => void;
-  warning: (message: string) => void;
-}
-
-export interface ApiServiceConfig {
-  name: string;
-  baseURL: string;
-  timeout?: number;
-  headers?: Record<string, string>;
-  // Optional token refresh configuration for this service (typically the auth service)
-  refreshEndpoint?: string; // e.g. "/auth/refresh" or "/v1/token/refresh"
-  refreshMethod?: "post" | "get";
-  refreshRequestBody?: Record<string, unknown>; // payload to send when refreshing
-  refreshTokenHeaderName?: string; // defaults to "Authorization"
-  refreshTokenPrefix?: string; // defaults to "Bearer"
-  accessTokenPath?: string; // dot-path to access token in response, defaults to "access_token"
 }
 
 export interface ApiClientOptions {
-  services: Record<string, ApiServiceConfig>;
-  defaultTimeout?: number;
-  defaultHeaders?: Record<string, string>;
+  services: Record<string, ServiceConfig>;
   tokenManager?: TokenManager;
   notificationManager?: NotificationManager;
+  isRefreshTokenInCookie?: boolean; // If true, refresh token is in HttpOnly cookie
   onUnauthorized?: () => void;
-  onTokenRefresh?: (newToken: string) => void;
-  onTokenRefreshError?: (error: Error) => void;
-  // Custom override for token refresh flow. If provided, it will be used.
-  onRefreshRequest?: (
-    refreshToken: string,
-    axiosLib: any, // AxiosStatic type
-    services: Record<string, ApiServiceConfig>
-  ) => Promise<string | null>; // return new access token or null
+}
+
+export interface ServiceConfig {
+  baseURL: string;
+  config?: Omit<CreateAxiosDefaults, "baseURL">; // Use Axios's built-in config type
+  refreshEndpoint?: string; // Just the endpoint URL for refresh, e.g., "/auth/refresh"
 }

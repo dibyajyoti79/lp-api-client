@@ -7,9 +7,6 @@ export type {
   ApiError,
   TokenManager,
   NotificationManager,
-  ApiServiceConfig,
   ApiClientOptions,
+  ServiceConfig,
 } from "./types";
-
-// Utilities
-export { isAxiosError, getErrorMessage, getErrorStatus } from "./utils";

@@ -6,10 +6,14 @@ import { ApiConfig, ApiService } from "@learningpad/api-client";
 ApiConfig.initialize({
   services: {
     jsonplaceholder: {
-      name: "jsonplaceholder",
       baseURL: "https://jsonplaceholder.typicode.com",
     },
   },
+  notificationManager: {
+    success: (message) => console.log("✅", message),
+    error: (message) => console.error("❌", message),
+  },
+  onUnauthorized: () => console.log("Unauthorized"),
 });
 
 // Step 2: Create service client
@@ -23,13 +27,11 @@ function SimpleExample() {
     url: "/posts",
   });
 
-  // Create data
+  // Create data (notifications handled automatically if API returns message field)
   const createPost = apiService.useMutation({
     keyToInvalidate: { queryKey: ["posts"] },
     url: "/posts",
     method: "post",
-    successMessage: "Post created successfully!",
-    errorMessage: "Failed to create post",
   });
 
   const handleCreate = () => {

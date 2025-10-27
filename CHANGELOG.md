@@ -5,6 +5,108 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2024-01-20
+
+### 🎉 Major Simplification - Super Simple API Client
+
+This is a complete rewrite focused on simplicity and ease of use. The package now provides only the essential React Query hooks and removes all unnecessary complexity.
+
+### Added
+
+- **Notification Manager** with automatic success/error message handling
+- **showNotification** flag on `useMutation` to control notifications per mutation
+- **Token Manager** now supports optional `getRefreshToken()` and `setRefreshToken()` methods
+- **isRefreshTokenInCookie** flag to support both localStorage and HttpOnly cookie-based auth
+- Proper TypeScript types for all configurations (no more `any` types)
+- Smart callback handling - ensures both internal logic and user callbacks run correctly
+- Support for both localStorage and HttpOnly cookie-based token storage
+
+### Changed
+
+- **BREAKING**: Removed all utility functions (`isAxiosError`, `getErrorMessage`, `buildUrl`, etc.)
+- **BREAKING**: Removed all direct API methods (`get`, `post`, `put`, `patch`, `delete`)
+- **BREAKING**: Only `useQuery` and `useMutation` hooks are available (no direct API calls)
+- **BREAKING**: Removed `name` property from service configuration
+- **BREAKING**: Use Axios's built-in `AxiosRequestConfig` type instead of custom types
+- Simplified configuration - use `config` property for any Axios configuration
+- Removed unnecessary methods from `ApiConfig` (`isInitialized`, `reset`, `getOptions`)
+- Improved token refresh mechanism to handle both cookie and localStorage approaches
+
+### Removed
+
+- All utility functions from `src/utils/` directory
+- Direct API methods (`get`, `post`, `put`, `patch`, `delete`)
+- Complex callback chains
+- Custom configuration types in favor of Axios's native types
+- Unused service properties (`name`, `timeout` in favor of `config`)
+
+### Migration Guide
+
+```typescript
+// Before (1.x.x)
+ApiConfig.initialize({
+  services: {
+    api: {
+      name: "api", // ❌ Removed
+      baseURL: "https://api.example.com",
+      timeout: 30000, // ❌ Removed
+    },
+  },
+  defaultTimeout: 10000, // ❌ Removed
+  defaultHeaders: {}, // ❌ Removed
+});
+
+// After (2.0.0)
+ApiConfig.initialize({
+  services: {
+    api: {
+      baseURL: "https://api.example.com",
+      config: { timeout: 30000 }, // ✅ Use Axios config
+    },
+  },
+  notificationManager: {
+    // ✅ Added
+    success: (message) => console.log(message),
+    error: (message) => console.error(message),
+  },
+  tokenManager: {
+    getAccessToken: () => localStorage.getItem("token"),
+    setAccessToken: (token) => localStorage.setItem("token", token),
+    clearTokens: () => localStorage.clear(),
+    getRefreshToken: () => localStorage.getItem("refreshToken"), // ✅ Optional
+    setRefreshToken: (token) => localStorage.setItem("refreshToken", token), // ✅ Optional
+  },
+  isRefreshTokenInCookie: false, // ✅ Added
+});
+```
+
+### Usage
+
+```typescript
+// Create service
+const apiService = new ApiService("api");
+
+// Fetch data
+const { data } = apiService.useQuery({
+  key: ["users"],
+  url: "/users",
+});
+
+// Mutate data (with automatic notifications)
+const mutation = apiService.useMutation({
+  url: "/users",
+  method: "post",
+  keyToInvalidate: { queryKey: ["users"] },
+});
+
+// Disable notifications for specific mutation
+const silentMutation = apiService.useMutation({
+  url: "/users",
+  method: "post",
+  showNotification: false, // ✅ Control notifications
+});
+```
+
 ## [1.1.0] - 2024-01-15
 
 ### Major Changes

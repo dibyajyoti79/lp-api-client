@@ -2,46 +2,47 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ApiConfig, ApiService } from "@learningpad/api-client";
 
-// Step 1: Initialize API Configuration with multiple services
+// Step 1: Initialize API Configuration
+const tokenManager = {
+  getAccessToken: () => localStorage.getItem("accessToken"),
+  setAccessToken: (token: string) => localStorage.setItem("accessToken", token),
+  clearTokens: () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+  },
+  // Refresh token methods (optional)
+  getRefreshToken: () => localStorage.getItem("refreshToken"),
+  setRefreshToken: (token: string) =>
+    localStorage.setItem("refreshToken", token),
+};
+
 ApiConfig.initialize({
   services: {
     posts: {
-      name: "posts",
       baseURL: "https://jsonplaceholder.typicode.com",
-      timeout: 10000,
+      config: { timeout: 10000 }, // Use Axios config
     },
     users: {
-      name: "users",
       baseURL: "https://jsonplaceholder.typicode.com",
-      timeout: 10000,
+      config: { timeout: 10000 },
     },
     auth: {
-      name: "auth",
-      baseURL: "https://auth.example.com",
-      timeout: 5000,
+      baseURL: "https://api.example.com",
+      refreshEndpoint: "/auth/refresh", // For token refresh
+      config: {
+        withCredentials: true, // Use with credentials for cookie-based auth
+        timeout: 5000,
+      },
     },
   },
-  defaultTimeout: 10000,
-  defaultHeaders: {
-    "Content-Type": "application/json",
-  },
-  tokenManager: {
-    getAccessToken: () => localStorage.getItem("access_token"),
-    getRefreshToken: () => localStorage.getItem("refresh_token"),
-    setAccessToken: (token: string) =>
-      localStorage.setItem("access_token", token),
-    setRefreshToken: (token: string) =>
-      localStorage.setItem("refresh_token", token),
-    clearTokens: () => {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-    },
-  },
+  tokenManager,
+  isRefreshTokenInCookie: false, // false = localStorage, true = HttpOnly cookie
   notificationManager: {
-    success: (message: string) => console.log("✅", message),
-    error: (message: string) => console.error("❌", message),
-    info: (message: string) => console.log("ℹ️", message),
-    warning: (message: string) => console.warn("⚠️", message),
+    success: (message) => console.log("✅", message),
+    error: (message) => console.error("❌", message),
+  },
+  onUnauthorized: () => {
+    window.location.href = "/login";
   },
 });
 
@@ -50,7 +51,7 @@ const postsService = new ApiService("posts");
 const usersService = new ApiService("users");
 const authService = new ApiService("auth");
 
-// Step 3: Comprehensive example with multiple operations
+// Step 3: Component with all CRUD operations
 function ComprehensiveExample() {
   // Fetch posts
   const { data: posts, isLoading: postsLoading } = postsService.useQuery({
@@ -65,9 +66,6 @@ function ComprehensiveExample() {
   const { data: users, isLoading: usersLoading } = usersService.useQuery({
     key: ["users"],
     url: "/users",
-    options: {
-      staleTime: 10 * 60 * 1000, // 10 minutes
-    },
   });
 
   // Create post mutation
@@ -75,8 +73,7 @@ function ComprehensiveExample() {
     keyToInvalidate: { queryKey: ["posts"] },
     url: "/posts",
     method: "post",
-    successMessage: "Post created successfully!",
-    errorMessage: "Failed to create post",
+    showNotification: true, // Default, optional
   });
 
   // Update post mutation
@@ -84,163 +81,103 @@ function ComprehensiveExample() {
     keyToInvalidate: { queryKey: ["posts"] },
     url: "/posts",
     method: "put",
-    successMessage: "Post updated successfully!",
-    errorMessage: "Failed to update post",
   });
 
-  // Delete post mutation
+  // Delete post mutation (without notifications)
   const deletePost = postsService.useMutation({
     keyToInvalidate: { queryKey: ["posts"] },
     url: "/posts",
     method: "delete",
-    successMessage: "Post deleted successfully!",
-    errorMessage: "Failed to delete post",
+    showNotification: false, // Disable notifications
   });
 
   // Login mutation
   const login = authService.useMutation({
-    url: "/login",
+    url: "/auth/login",
     method: "post",
-    successMessage: "Login successful!",
-    errorMessage: "Login failed",
   });
 
-  const handleCreatePost = () => {
+  const handleCreate = () => {
     createPost.mutate({
       title: "New Post",
-      body: "This is a new post created via API",
+      body: "This is a new post",
       userId: 1,
     });
   };
 
-  const handleUpdatePost = (postId: number) => {
+  const handleUpdate = (id: number) => {
     updatePost.mutate({
-      id: postId,
+      id,
       title: "Updated Post",
-      body: "This post has been updated",
-      userId: 1,
+      body: "Updated content",
     });
   };
 
-  const handleDeletePost = (postId: number) => {
-    deletePost.mutate(postId);
+  const handleDelete = (id: number) => {
+    deletePost.mutate({ id });
   };
 
   const handleLogin = () => {
     login.mutate({
       email: "user@example.com",
-      password: "password123",
+      password: "password",
     });
   };
 
-  const isLoading = postsLoading || usersLoading;
-
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
-      <h1>Comprehensive API Client Example</h1>
+    <div style={{ padding: "20px" }}>
+      <h1>Comprehensive Example</h1>
 
+      {/* Login */}
       <div style={{ marginBottom: "20px" }}>
-        <h2>Authentication</h2>
-        <button
-          onClick={handleLogin}
-          disabled={login.isPending}
-          style={{ padding: "10px 20px", marginRight: "10px" }}
-        >
+        <button onClick={handleLogin} disabled={login.isPending}>
           {login.isPending ? "Logging in..." : "Login"}
         </button>
-        {login.isSuccess && (
-          <span style={{ color: "green" }}>✅ Login successful!</span>
-        )}
-        {login.isError && <span style={{ color: "red" }}>❌ Login failed</span>}
       </div>
 
+      {/* CRUD Operations */}
       <div style={{ marginBottom: "20px" }}>
         <h2>Posts Management</h2>
-        <button
-          onClick={handleCreatePost}
-          disabled={createPost.isPending}
-          style={{ padding: "10px 20px", marginRight: "10px" }}
-        >
+        <button onClick={handleCreate} disabled={createPost.isPending}>
           {createPost.isPending ? "Creating..." : "Create Post"}
         </button>
-        {createPost.isSuccess && (
-          <span style={{ color: "green" }}>✅ Post created!</span>
-        )}
-        {createPost.isError && (
-          <span style={{ color: "red" }}>❌ Failed to create post</span>
-        )}
       </div>
 
-      {isLoading ? (
-        <div>Loading...</div>
+      {/* Display Posts */}
+      {postsLoading ? (
+        <div>Loading posts...</div>
       ) : (
-        <div style={{ display: "flex", gap: "20px" }}>
-          <div style={{ flex: 1 }}>
-            <h2>Posts ({posts?.length || 0})</h2>
-            {posts?.slice(0, 3).map((post: any) => (
-              <div
-                key={post.id}
-                style={{
-                  border: "1px solid #ddd",
-                  padding: "15px",
-                  margin: "10px 0",
-                  borderRadius: "5px",
-                  backgroundColor: "#f9f9f9",
-                }}
-              >
-                <h3>{post.title}</h3>
-                <p>{post.body}</p>
-                <div style={{ marginTop: "10px" }}>
-                  <button
-                    onClick={() => handleUpdatePost(post.id)}
-                    disabled={updatePost.isPending}
-                    style={{ padding: "5px 10px", marginRight: "5px" }}
-                  >
-                    Update
-                  </button>
-                  <button
-                    onClick={() => handleDeletePost(post.id)}
-                    disabled={deletePost.isPending}
-                    style={{
-                      padding: "5px 10px",
-                      backgroundColor: "#ff6b6b",
-                      color: "white",
-                      border: "none",
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div>
+          <h2>Posts ({posts?.length || 0})</h2>
+          {posts?.slice(0, 5).map((post: any) => (
+            <div
+              key={post.id}
+              style={{
+                border: "1px solid #ccc",
+                padding: "10px",
+                margin: "10px 0",
+              }}
+            >
+              <h3>{post.title}</h3>
+              <p>{post.body}</p>
+              <button onClick={() => handleUpdate(post.id)}>Update</button>
+              <button onClick={() => handleDelete(post.id)}>Delete</button>
+            </div>
+          ))}
+        </div>
+      )}
 
-          <div style={{ flex: 1 }}>
-            <h2>Users ({users?.length || 0})</h2>
-            {users?.slice(0, 3).map((user: any) => (
-              <div
-                key={user.id}
-                style={{
-                  border: "1px solid #ddd",
-                  padding: "15px",
-                  margin: "10px 0",
-                  borderRadius: "5px",
-                  backgroundColor: "#f0f8ff",
-                }}
-              >
-                <h3>{user.name}</h3>
-                <p>
-                  <strong>Email:</strong> {user.email}
-                </p>
-                <p>
-                  <strong>Phone:</strong> {user.phone}
-                </p>
-                <p>
-                  <strong>Website:</strong> {user.website}
-                </p>
-              </div>
-            ))}
-          </div>
+      {/* Display Users */}
+      {usersLoading ? (
+        <div>Loading users...</div>
+      ) : (
+        <div>
+          <h2>Users ({users?.length || 0})</h2>
+          {users?.slice(0, 3).map((user: any) => (
+            <div key={user.id} style={{ margin: "10px 0" }}>
+              <strong>{user.name}</strong> - {user.email}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -251,8 +188,8 @@ function App() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        retry: 3,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        retry: 1,
+        refetchOnWindowFocus: false,
       },
     },
   });

@@ -1,22 +1,18 @@
 import axios, {
   AxiosInstance,
-  AxiosRequestConfig,
   AxiosResponse,
-  AxiosError,
+  InternalAxiosRequestConfig,
 } from "axios";
-import { ApiClientConfig, TokenManager, ApiClientOptions } from "../types";
+import { ApiClientOptions, NotificationManager } from "../types";
 
 export class ApiConfig {
   private static instance: ApiConfig;
   private options: ApiClientOptions;
-  private tokenManager: TokenManager;
-  private notificationManager?: any;
-  private refreshPromise: Promise<string | null> | null = null;
+  private refreshPromise: Promise<void> | null = null;
+  private notificationManager?: NotificationManager;
 
   private constructor(options: ApiClientOptions) {
     this.options = options;
-    this.tokenManager =
-      options.tokenManager || this.createDefaultTokenManager();
     this.notificationManager = options.notificationManager;
   }
 
@@ -31,92 +27,46 @@ export class ApiConfig {
     ApiConfig.instance = new ApiConfig(options);
   }
 
-  public static isInitialized(): boolean {
-    return ApiConfig.instance !== null;
-  }
-
-  public static reset(): void {
-    ApiConfig.instance = null as any;
-  }
-
-  private createDefaultTokenManager(): TokenManager {
-    return {
-      getAccessToken: () => {
-        if (typeof window !== "undefined") {
-          return localStorage.getItem("access_token");
-        }
-        return null;
-      },
-      getRefreshToken: () => {
-        if (typeof window !== "undefined") {
-          return localStorage.getItem("refresh_token");
-        }
-        return null;
-      },
-      setAccessToken: (token: string) => {
-        if (typeof window !== "undefined") {
-          localStorage.setItem("access_token", token);
-        }
-      },
-      setRefreshToken: (token: string) => {
-        if (typeof window !== "undefined") {
-          localStorage.setItem("refresh_token", token);
-        }
-      },
-      clearTokens: () => {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-        }
-      },
-    };
-  }
-
   public createAxiosInstance(serviceName: string): AxiosInstance {
     const serviceConfig = this.options.services[serviceName];
     if (!serviceConfig) {
       throw new Error(`Service '${serviceName}' not found in configuration`);
     }
 
+    // Use Axios's config directly
     const axiosInstance = axios.create({
       baseURL: serviceConfig.baseURL,
-      timeout: serviceConfig.timeout || this.options.defaultTimeout || 60000,
-      headers: {
-        "Content-Type": "application/json",
-        ...this.options.defaultHeaders,
-        ...serviceConfig.headers,
-      },
-      withCredentials: Boolean(this.options.defaultHeaders?.withCredentials),
+      ...serviceConfig.config, // Spread any custom Axios config
     });
 
-    // Request interceptor
+    // Request interceptor - add Bearer token
     axiosInstance.interceptors.request.use(
-      (config: any) => {
-        const accessToken = this.tokenManager.getAccessToken();
-        if (accessToken) {
-          config.headers.Authorization = `Bearer ${accessToken}`;
+      (config: InternalAxiosRequestConfig) => {
+        if (this.options.tokenManager) {
+          const accessToken = this.options.tokenManager.getAccessToken();
+          if (accessToken) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
+          }
         }
         return config;
       },
-      (error: any) => Promise.reject(error)
+      (error) => Promise.reject(error)
     );
 
-    // Response interceptor
+    // Response interceptor - handle 401 with refresh
     axiosInstance.interceptors.response.use(
       (response: AxiosResponse) => response,
-      async (error: any) => {
+      async (error) => {
         const originalRequest = error.config;
 
         if (error?.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
 
-          // Use the refresh queue to ensure only one refresh happens at a time
-          const newToken = await this.refreshToken();
+          // Refresh token
+          await this.refreshToken();
 
-          if (newToken) {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return axiosInstance(originalRequest);
-          }
+          // Retry the original request
+          return axiosInstance(originalRequest);
         }
 
         return Promise.reject(error);
@@ -126,19 +76,11 @@ export class ApiConfig {
     return axiosInstance;
   }
 
-  public getTokenManager(): TokenManager {
-    return this.tokenManager;
-  }
-
-  public getNotificationManager() {
+  public getNotificationManager(): NotificationManager | undefined {
     return this.notificationManager;
   }
 
-  public getOptions(): ApiClientOptions {
-    return this.options;
-  }
-
-  private async refreshToken(): Promise<string | null> {
+  private async refreshToken(): Promise<void> {
     // If a refresh is already in progress, wait for it
     if (this.refreshPromise) {
       return this.refreshPromise;
@@ -148,93 +90,72 @@ export class ApiConfig {
     this.refreshPromise = this.performTokenRefresh();
 
     try {
-      const result = await this.refreshPromise;
-      return result;
+      await this.refreshPromise;
     } finally {
       // Clear the promise when done (success or failure)
       this.refreshPromise = null;
     }
   }
 
-  private async performTokenRefresh(): Promise<string | null> {
-    const refreshToken = this.tokenManager.getRefreshToken();
-
-    if (!refreshToken) {
-      this.options.onUnauthorized?.();
-      return null;
-    }
-
+  private async performTokenRefresh(): Promise<void> {
     try {
-      // If user provided custom refresh handler, use it
-      if (this.options.onRefreshRequest) {
-        const newToken = await this.options.onRefreshRequest(
-          refreshToken,
-          axios,
-          this.options.services
-        );
-        if (newToken) {
-          this.tokenManager.setAccessToken(newToken);
-          this.options.onTokenRefresh?.(newToken);
-          return newToken;
+      const tokenManager = this.options.tokenManager;
+      if (!tokenManager) {
+        console.error("No token manager configured");
+        this.options.onUnauthorized?.();
+        return;
+      }
+
+      // Find the auth service with refreshEndpoint
+      const authService = Object.values(this.options.services).find(
+        (service) => service.refreshEndpoint
+      );
+
+      if (!authService) {
+        console.error("No refresh endpoint configured");
+        this.options.onUnauthorized?.();
+        return;
+      }
+
+      const isRefreshTokenInCookie = this.options.isRefreshTokenInCookie;
+      let requestBody: any;
+
+      // If refresh token is NOT in cookie, we need to pass it in body
+      if (!isRefreshTokenInCookie && tokenManager.getRefreshToken) {
+        const refreshToken = tokenManager.getRefreshToken();
+        if (!refreshToken) {
+          throw new Error("No refresh token available");
         }
-      } else {
-        // Automatic discovery: pick a service named like "auth" or the first with refreshEndpoint
-        const authService = Object.values(this.options.services).find(
-          (service) =>
-            service.refreshEndpoint ||
-            service.name.toLowerCase().includes("auth")
-        );
+        requestBody = { refreshToken };
+      }
 
-        if (authService) {
-          const refreshEndpoint =
-            authService.refreshEndpoint || "/auth/refresh";
-          const method = authService.refreshMethod || "post";
-          const tokenHeader =
-            authService.refreshTokenHeaderName || "Authorization";
-          const tokenPrefix = authService.refreshTokenPrefix || "Bearer";
-          const body = authService.refreshRequestBody || {};
-
-          const response = await axios.request({
-            url: `${authService.baseURL}${refreshEndpoint}`,
-            method,
-            data: method === "post" ? body : undefined,
-            headers: {
-              [tokenHeader]: `${tokenPrefix} ${refreshToken}`,
-            },
-          });
-
-          const path = (authService.accessTokenPath || "access_token").split(
-            "."
-          );
-          let newAccessToken: any = response?.data;
-          for (const seg of path) newAccessToken = newAccessToken?.[seg];
-
-          if (newAccessToken) {
-            this.tokenManager.setAccessToken(newAccessToken);
-            this.options.onTokenRefresh?.(newAccessToken);
-            return newAccessToken;
-          }
+      // Make refresh request
+      const response = await axios.post(
+        `${authService.baseURL}${authService.refreshEndpoint}`,
+        requestBody,
+        {
+          withCredentials: isRefreshTokenInCookie, // Use withCredentials for cookie-based refresh
         }
+      );
+
+      // Update tokens based on response
+      if (response.data.accessToken) {
+        tokenManager.setAccessToken(response.data.accessToken);
+      }
+
+      // If refresh token is NOT in cookie, also update the refresh token
+      if (
+        !isRefreshTokenInCookie &&
+        response.data.refreshToken &&
+        tokenManager.setRefreshToken
+      ) {
+        tokenManager.setRefreshToken(response.data.refreshToken);
       }
     } catch (err) {
       console.error("Refresh token error:", err);
-      this.tokenManager.clearTokens();
-      this.options.onTokenRefreshError?.(err as Error);
+      this.options.tokenManager?.clearTokens();
       this.options.onUnauthorized?.();
+      throw err;
     }
-
-    return null;
   }
 }
-
-export const createAxiosInstance = (config: ApiClientConfig): AxiosInstance => {
-  return axios.create({
-    baseURL: config.baseURL,
-    timeout: config.timeout || 60000,
-    headers: {
-      "Content-Type": "application/json",
-      ...config.headers,
-    },
-    withCredentials: config.withCredentials || false,
-  });
-};

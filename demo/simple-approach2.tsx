@@ -3,16 +3,34 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ApiConfig, ApiService } from "@learningpad/api-client";
 
 // Step 1: Initialize API Configuration
+const tokenManager = {
+  getAccessToken: () => localStorage.getItem("accessToken"),
+  setAccessToken: (token: string) => localStorage.setItem("accessToken", token),
+  clearTokens: () => localStorage.clear(),
+  // Optional refresh token methods
+  getRefreshToken: () => localStorage.getItem("refreshToken"),
+  setRefreshToken: (token: string) =>
+    localStorage.setItem("refreshToken", token),
+};
+
 ApiConfig.initialize({
   services: {
     jsonplaceholder: {
-      name: "jsonplaceholder",
       baseURL: "https://jsonplaceholder.typicode.com",
     },
     auth: {
-      name: "auth",
       baseURL: "https://auth.example.com",
+      refreshEndpoint: "/auth/refresh", // Configure refresh endpoint
     },
+  },
+  tokenManager,
+  isRefreshTokenInCookie: false, // false = use refresh token from localStorage
+  notificationManager: {
+    success: (message) => console.log("✅", message),
+    error: (message) => console.error("❌", message),
+  },
+  onUnauthorized: () => {
+    window.location.href = "/login";
   },
 });
 
@@ -28,12 +46,10 @@ function SimpleExample() {
     url: "/posts",
   });
 
-  // Create data with auth service
+  // Create data with auth service (notifications handled automatically)
   const login = authApiService.useMutation({
     url: "/login",
     method: "post",
-    successMessage: "Login successful!",
-    errorMessage: "Login failed",
   });
 
   const handleLogin = () => {
