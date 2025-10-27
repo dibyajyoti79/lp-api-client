@@ -24,6 +24,7 @@ export interface ApiClientOptions {
   tokenManager?: TokenManager;
   notificationManager?: NotificationManager;
   isRefreshTokenInCookie?: boolean; // If true, refresh token is in HttpOnly cookie
+  isAccessTokenInCookie?: boolean; // If true, access token is in HttpOnly cookie
   onUnauthorized?: () => void;
 }
 

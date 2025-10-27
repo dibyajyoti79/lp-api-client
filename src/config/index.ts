@@ -42,10 +42,15 @@ export class ApiConfig {
     // Request interceptor - add Bearer token
     axiosInstance.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        if (this.options.tokenManager) {
-          const accessToken = this.options.tokenManager.getAccessToken();
-          if (accessToken) {
-            config.headers.Authorization = `Bearer ${accessToken}`;
+        const isAccessTokenInCookie = this.options.isAccessTokenInCookie;
+        if (isAccessTokenInCookie) {
+          config.withCredentials = true;
+        } else {
+          if (this.options.tokenManager) {
+            const accessToken = this.options.tokenManager.getAccessToken();
+            if (accessToken) {
+              config.headers.Authorization = `Bearer ${accessToken}`;
+            }
           }
         }
         return config;
@@ -99,6 +104,22 @@ export class ApiConfig {
 
   private async performTokenRefresh(): Promise<void> {
     try {
+      const isRefreshTokenInCookie = this.options.isRefreshTokenInCookie;
+      const isAccessTokenInCookie = this.options.isAccessTokenInCookie;
+      const authService = Object.values(this.options.services).find(
+        (service) => service.refreshEndpoint
+      );
+
+      if (isAccessTokenInCookie && isRefreshTokenInCookie && authService) {
+        await axios.post(
+          `${authService.baseURL}${authService.refreshEndpoint}`,
+          {
+            withCredentials: true,
+          }
+        );
+        return;
+      }
+
       const tokenManager = this.options.tokenManager;
       if (!tokenManager) {
         console.error("No token manager configured");
@@ -107,9 +128,6 @@ export class ApiConfig {
       }
 
       // Find the auth service with refreshEndpoint
-      const authService = Object.values(this.options.services).find(
-        (service) => service.refreshEndpoint
-      );
 
       if (!authService) {
         console.error("No refresh endpoint configured");
@@ -117,7 +135,6 @@ export class ApiConfig {
         return;
       }
 
-      const isRefreshTokenInCookie = this.options.isRefreshTokenInCookie;
       let requestBody: any;
 
       // If refresh token is NOT in cookie, we need to pass it in body
@@ -139,17 +156,17 @@ export class ApiConfig {
       );
 
       // Update tokens based on response
-      if (response.data.accessToken) {
-        tokenManager.setAccessToken(response.data.accessToken);
+      if (response?.data?.data?.accessToken) {
+        tokenManager.setAccessToken(response.data.data.accessToken);
       }
 
       // If refresh token is NOT in cookie, also update the refresh token
       if (
         !isRefreshTokenInCookie &&
-        response.data.refreshToken &&
+        response.data.data.refreshToken &&
         tokenManager.setRefreshToken
       ) {
-        tokenManager.setRefreshToken(response.data.refreshToken);
+        tokenManager.setRefreshToken(response.data.data.refreshToken);
       }
     } catch (err) {
       console.error("Refresh token error:", err);
