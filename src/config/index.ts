@@ -113,6 +113,7 @@ export class ApiConfig {
       if (isAccessTokenInCookie && isRefreshTokenInCookie && authService) {
         await axios.post(
           `${authService.baseURL}${authService.refreshEndpoint}`,
+          {},
           {
             withCredentials: true,
           }
