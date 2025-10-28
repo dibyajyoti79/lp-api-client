@@ -3,17 +3,19 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
-import { ApiClientOptions, NotificationManager } from "../types";
+import { ApiClientOptions, NotificationManager, TokenManager } from "../types";
 
 export class ApiConfig {
   private static instance: ApiConfig;
   private options: ApiClientOptions;
   private refreshPromise: Promise<void> | null = null;
   private notificationManager?: NotificationManager;
+  private tokenManager?: TokenManager;
 
   private constructor(options: ApiClientOptions) {
     this.options = options;
     this.notificationManager = options.notificationManager;
+    this.tokenManager = options.tokenManager;
   }
 
   public static getInstance(): ApiConfig {
@@ -83,6 +85,10 @@ export class ApiConfig {
 
   public getNotificationManager(): NotificationManager | undefined {
     return this.notificationManager;
+  }
+
+  public getTokenManager(): TokenManager | undefined {
+    return this.tokenManager;
   }
 
   private async refreshToken(): Promise<void> {
