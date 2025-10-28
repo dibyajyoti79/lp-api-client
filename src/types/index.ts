@@ -1,8 +1,10 @@
-import { AxiosRequestConfig, CreateAxiosDefaults } from "axios";
+import { CreateAxiosDefaults } from "axios";
 
 export interface ApiError {
-  detail: string | { message: string };
-  message?: string;
+  success: boolean;
+  message: string;
+  data: any;
+  error: any;
 }
 
 export interface TokenManager {
@@ -23,8 +25,6 @@ export interface ApiClientOptions {
   services: Record<string, ServiceConfig>;
   tokenManager?: TokenManager;
   notificationManager?: NotificationManager;
-  isRefreshTokenInCookie?: boolean; // If true, refresh token is in HttpOnly cookie
-  isAccessTokenInCookie?: boolean; // If true, access token is in HttpOnly cookie
   onUnauthorized?: () => void;
 }
 
