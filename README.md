@@ -154,6 +154,56 @@ const queryClient = new QueryClient();
 }
 ```
 
+### ⚠️ Important: Error Response Format for Auto-Refresh
+
+**For automatic token refresh to work, your backend MUST return errors in this format:**
+
+```typescript
+// Format 1: Direct code in response
+{
+  code: "TOKEN_EXPIRED"; // or "ACCESS_TOKEN_NOT_PROVIDED"
+}
+
+// Format 2: Nested error object
+{
+  error: {
+    code: "TOKEN_EXPIRED"; // or "ACCESS_TOKEN_NOT_PROVIDED"
+  }
+}
+```
+
+**Required Error Codes for Auto-Refresh:**
+
+- `TOKEN_EXPIRED` - When access token has expired
+- `ACCESS_TOKEN_NOT_PROVIDED` - When no access token was provided
+
+**Other 401 errors (invalid credentials, OTP expired, etc.) will NOT trigger refresh.**
+
+Example backend responses:
+
+```typescript
+// ✅ Will trigger refresh
+{
+  code: "TOKEN_EXPIRED";
+}
+{
+  error: {
+    code: "ACCESS_TOKEN_NOT_PROVIDED";
+  }
+}
+
+// ❌ Will NOT trigger refresh (handled as regular 401)
+{
+  code: "INVALID_CREDENTIALS";
+}
+{
+  code: "OTP_EXPIRED";
+}
+{
+  message: "Unauthorized";
+} // No code field
+```
+
 ### TokenManager
 
 ```typescript

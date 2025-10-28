@@ -61,19 +61,46 @@ export class ApiConfig {
     );
 
     // Response interceptor - handle 401 with refresh
+    // IMPORTANT: Refresh only triggers when backend returns specific error codes:
+    // - "TOKEN_EXPIRED" (in response.data.code or response.data.error.code)
+    // - "ACCESS_TOKEN_NOT_PROVIDED" (in response.data.code or response.data.error.code)
+    // Other 401 errors (invalid credentials, OTP expired, etc.) will NOT trigger refresh
     axiosInstance.interceptors.response.use(
       (response: AxiosResponse) => response,
       async (error) => {
         const originalRequest = error.config;
 
         if (error?.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true;
+          // Check error code from response
+          // Supports: { code: "..." } or { error: { code: "..." } }
+          const errorCode =
+            error.response?.data?.code || error.response?.data?.error?.code;
+          const shouldRefresh =
+            errorCode === "TOKEN_EXPIRED" ||
+            errorCode === "ACCESS_TOKEN_NOT_PROVIDED";
 
-          // Refresh token
-          await this.refreshToken();
+          // Only refresh if error code indicates token expiry
+          if (shouldRefresh) {
+            originalRequest._retry = true;
 
-          // Retry the original request
-          return axiosInstance(originalRequest);
+            // Check if we have a refresh endpoint configured
+            const hasRefreshEndpoint = Object.values(
+              this.options.services
+            ).some((service) => service.refreshEndpoint);
+
+            if (hasRefreshEndpoint) {
+              try {
+                await this.refreshToken();
+                // Retry the original request
+                return axiosInstance(originalRequest);
+              } catch (refreshError) {
+                // Refresh failed, don't retry
+                return Promise.reject(error);
+              }
+            }
+          }
+
+          // Not a token expiry error - this is a real 401
         }
 
         return Promise.reject(error);
